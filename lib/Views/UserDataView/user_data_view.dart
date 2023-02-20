@@ -156,7 +156,7 @@ class _UserDataViewState extends State<UserDataView> {
                                   bottom: 5,
                                   right: 8,
                                   child: Container(
-                                    clipBehavior: Clip.antiAliasWithSaveLayer,
+                                    clipBehavior: Clip.none,
                                     height: 20,
                                     width: 20,
                                     decoration: BoxDecoration(
@@ -188,12 +188,12 @@ class _UserDataViewState extends State<UserDataView> {
                         const SizedBox(
                           height: 10,
                         ),
-                        CustomTextField(controler: nameCtrl, hint: 'name'),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        CustomTextField(
-                            controler: desgCtrl, hint: 'designation'),
+                        // CustomTextField(controler: nameCtrl, hint: 'name'),
+                        // const SizedBox(
+                        //   height: 10,
+                        // ),
+                        // CustomTextField(
+                        //     controler: desgCtrl, hint: 'designation'),
                         const SizedBox(
                           height: 20,
                         ),
@@ -233,7 +233,7 @@ class _UserDataViewState extends State<UserDataView> {
                                     .putFile(File(imageState.value));
                                 // await storage
                                 //     .ref('ProfileImage/${videoList[1]}')
-                                //     .putFile(File(videoState.value));
+                                // .putFile(File(videoState.value));
                                 var url = await storage
                                     .ref('ProfileImage/${imageList[1]}')
                                     .getDownloadURL();
@@ -276,10 +276,9 @@ class _UserDataViewState extends State<UserDataView> {
                                     return const Text("Submit");
                                   }
                                 })),
-
-                        // _chewieController != null
-                        //     ? Chewie(controller: _chewieController!)
-                        //     : Container()
+                        _chewieController != null
+                            ? Chewie(controller: _chewieController!)
+                            : Container()
                       ],
                     ),
                   ),

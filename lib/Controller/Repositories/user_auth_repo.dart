@@ -25,12 +25,30 @@ class UserAuthRepo {
     }
   }
 
-  static register(context, email, password) async {
+  static register(context, email, password, name, userName) async {
     try {
-      await auth
-          .createUserWithEmailAndPassword(email: email, password: password)
-          .then((value) async {
-        await FirebaseAuth.instance.signOut();
+      await ref.get().then((snapshot) async {
+        if (snapshot.exists) {
+          Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
+          data.forEach((key, value) {
+            if (value['user_name'] == userName) {
+              showSnackbar(context, 'username already exist');
+              return;
+            }
+          });
+        }
+
+        await auth.createUserWithEmailAndPassword(
+            email: email, password: password);
+        var userRef = ref.push();
+        await ref.child(auth.currentUser!.uid).set({
+          "name": name,
+          "email": email,
+          "user_name": userName,
+          "password": password,
+          "id": userRef.key
+        });
+        await auth.signOut();
         showSnackbar(context, 'user registered sucessfully');
       });
     } on FirebaseAuthException catch (e) {

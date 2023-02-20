@@ -1,13 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_task/Views/LandingView/landing_view.dart';
 import 'package:firebase_task/Views/Utils/util.dart';
 import 'package:firebase_task/Views/loginView/login_view.dart';
 import 'package:firebase_task/Views/registerView/register_view.dart';
-import 'package:firebase_task/Views/videosView/video_example.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'Views/ChatmainView/chat_main_view.dart';
 import 'Views/UserDataView/user_data_view.dart';
-import 'Views/homeView/home_view.dart';
-import 'Views/videosView/videos_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,29 +22,38 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Firebase Task',
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-      home: StreamBuilder(
+    return ScreenUtilInit(
+      builder: (context, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Firebase Task',
+          theme: ThemeData(
+            useMaterial3: true,
+            primarySwatch: Colors.blue,
+          ),
+          home: child,
+          routes: {
+            '/register_view': (context) {
+              return RegisterView();
+            },
+            '/login_view': (context) => const LoginView(),
+            '/user_data_view': (context) {
+              return UserDataView();
+            },
+            '/chat_main_view': (context) => const ChatMainView()
+          },
+        );
+      },
+      child: StreamBuilder(
         stream: auth.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            return const HomeView();
+            return LandindView();
           } else {
             return const LoginView();
           }
         },
       ),
-      routes: {
-        '/register_view': (context) {
-          return RegisterView();
-        },
-        '/login_view': (context) => const LoginView(),
-        '/user_data_view': (context) {
-          return UserDataView();
-        }
-      },
     );
   }
 }
