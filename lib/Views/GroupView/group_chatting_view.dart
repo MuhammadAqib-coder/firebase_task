@@ -30,6 +30,27 @@ class _GroupChattingViewState extends State<GroupChattingView> {
         child: Scaffold(
           appBar: AppBar(
             actions: [
+              // IconButton(
+              //     onPressed: () {
+              //       showMenu(
+              //           context: context,
+              //           position: RelativeRect.fromLTRB(10.sp, 10.sp, 0, 0),
+              //           items: [
+              //             PopupMenuItem(
+              //                 onTap: () {
+              //                 },
+              //                 value: '1',
+              //                 child: Text('Group info')),
+              //             PopupMenuItem(
+              //                 onTap: () {},
+              //                 value: '2',
+              //                 child: Text('Add user +'))
+              //           ]);
+              //     },
+              //     icon: const Icon(
+              //       Icons.more_vert,
+              //       color: Colors.white,
+              //     )),
               TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: Colors.white),
                   onPressed: () {
@@ -49,7 +70,7 @@ class _GroupChattingViewState extends State<GroupChattingView> {
             centerTitle: true,
             elevation: 0,
             title: Text(
-              widget.group['group_name'],
+              widget.group.child('group_name').value.toString(),
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: const Color.fromARGB(255, 58, 74, 82),
@@ -125,7 +146,7 @@ class _GroupChattingViewState extends State<GroupChattingView> {
         child: StreamBuilder(
             stream: FirebaseDatabase.instance
                 .ref('groupchat')
-                .child(widget.group['group_id'])
+                .child(widget.group.child('group_id').value.toString())
                 .child('chats')
                 .onValue,
             builder: (context, snapshot) {
@@ -192,13 +213,21 @@ class BoxList extends StatefulWidget {
 class _BoxListState extends State<BoxList> {
   var groupIds = [];
   var checkList = [];
-  var groupMembers;
+  DataSnapshot? groupMembers;
+  var actualMembers;
+  int checkUser = 0;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    groupMembers = widget.group['group_members'];
+    remainGroupMembers();
+  }
+
+  remainGroupMembers() async {
+    groupMembers =
+        await getGroupMembers(widget.group.child('group_id').value.toString());
+    actualMembers = groupMembers!.value;
   }
 
   @override
@@ -220,7 +249,7 @@ class _BoxListState extends State<BoxList> {
                     itemBuilder: (context, index) {
                       var data =
                           snapshot.data!.snapshot.children.toList()[index];
-                      if (!(groupMembers
+                      if (!(actualMembers
                           .contains(data.child('id').value.toString()))) {
                         return Card(
                           child: ListTile(
@@ -246,11 +275,23 @@ class _BoxListState extends State<BoxList> {
                           ),
                         );
                       } else {
+                        checkUser++;
+                        if (checkUser ==
+                            snapshot.data!.snapshot.children.length) {
+                          return const Center(
+                            child: Text(
+                              'No user avalilable',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          );
+                        } else {
+                          return SizedBox(
+                            height: 0.0,
+                            width: 0.w,
+                          );
+                        }
                         // checkList.removeAt(index);
-                        return SizedBox(
-                          height: 0.0,
-                          width: 0.w,
-                        );
+
                       }
                     });
               } else if (snapshot.connectionState == ConnectionState.waiting) {
@@ -268,15 +309,18 @@ class _BoxListState extends State<BoxList> {
         ElevatedButton(
             onPressed: () async {
               if (checkList.contains(true)) {
-                var newList = List.from(groupIds)..addAll(groupMembers);
+                var newList = List.from(groupIds)..addAll(actualMembers);
+                // groupMembers = List.from(newList);
                 await FirebaseDatabase.instance
                     .ref('groupchat')
                     .child(widget.group['group_id'])
                     .update({'group_members': newList});
-                for (var id in newList) {
-                  await ref.child(id).update({
-                    'groups': [widget.group['group_id']]
-                  });
+                for (var id in groupIds) {
+                  var group = await ref.child(id).child('groups').get();
+                  dynamic userGroup = group.value;
+                  var newGroupList = List.from(userGroup)
+                    ..add(widget.group['group_id']);
+                  await ref.child(id).update({'groups': newGroupList});
                 }
               }
               Navigator.pop(context);

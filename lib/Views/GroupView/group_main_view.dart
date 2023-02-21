@@ -18,6 +18,8 @@ class GroupMainView extends StatefulWidget {
   State<GroupMainView> createState() => _GroupMainViewState();
 }
 
+var userInvolvementGroup = Set();
+
 class _GroupMainViewState extends State<GroupMainView> {
   // String userName = "";
   // String email = "";
@@ -26,7 +28,7 @@ class _GroupMainViewState extends State<GroupMainView> {
   // String groupName = "";
   var checkBoxStatus = false;
   late final DataSnapshot user;
-  var tempSet = <dynamic>{};
+  dynamic userData;
 
   @override
   void initState() {
@@ -40,12 +42,12 @@ class _GroupMainViewState extends State<GroupMainView> {
 
   getUser() async {
     user = await getLoginUser();
-    var data = user.value as Map<dynamic, dynamic>;
-    if (data['groups'] != null) {
-      var temp = data['groups'];
+    userData = user.value as Map<dynamic, dynamic>;
+    if (userData['groups'] != null) {
+      var temp = userData['groups'];
 
       for (var i in temp) {
-        tempSet.add(i);
+        userInvolvementGroup.add(i);
       }
     }
     setState(() {
@@ -98,7 +100,7 @@ class _GroupMainViewState extends State<GroupMainView> {
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: const Color.fromARGB(255, 58, 74, 82),
           onPressed: () {
-            showGroupDialog();
+            showGroupDialog(userData);
           },
           icon: const Icon(Icons.add),
           label: const Text(
@@ -110,7 +112,7 @@ class _GroupMainViewState extends State<GroupMainView> {
             ? const Center(
                 child: CircularProgressIndicator(),
               )
-            : getGroupList(),
+            : getGroupStream(),
       ),
     );
   }
@@ -148,9 +150,69 @@ class _GroupMainViewState extends State<GroupMainView> {
     return Future.value(true);
   }
 
+  getGroupStream() {
+    return StreamBuilder(
+        stream: FirebaseDatabase.instance.ref('groupchat').onValue,
+        builder: (context, snapshot) {
+          if (snapshot.data != null) {
+            return ListView.builder(
+                padding: EdgeInsets.all(10.sp),
+                itemCount: snapshot.data!.snapshot.children.length,
+                itemBuilder: (context, index) {
+                  var data = snapshot.data!.snapshot.children.toList()[index];
+                  if (userInvolvementGroup
+                      .contains(data.child('group_id').value.toString())) {
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          side: BorderSide(
+                              color: const Color.fromARGB(255, 58, 74, 82),
+                              width: 2.sp)),
+                      elevation: 3,
+                      margin: EdgeInsets.only(bottom: 10.h),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.all(10.sp),
+                        focusColor: Theme.of(context).primaryColor,
+                        minVerticalPadding: 0.0,
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 20.r,
+                          backgroundColor:
+                              const Color.fromARGB(181, 236, 238, 174),
+                        ),
+                        title: Text(
+                          data.child('group_name').value.toString(),
+                          style: Theme.of(context).textTheme.bodyText1,
+                        ),
+                        onTap: () async {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => GroupChattingView(
+                                        group: data,
+                                        user: user.value,
+                                      )));
+                        },
+                      ),
+                    );
+                  } else {
+                    return const SizedBox(
+                      width: 0,
+                      height: 0,
+                    );
+                  }
+                });
+          } else {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        });
+  }
+
   getGroupList() {
     return FutureBuilder(
-        future: getGroupsChat(tempSet),
+        future: getGroupsChat(userInvolvementGroup),
         builder: (context, snapshot) {
           if (snapshot.data != null &&
               snapshot.connectionState == ConnectionState.done) {
@@ -200,7 +262,7 @@ class _GroupMainViewState extends State<GroupMainView> {
         });
   }
 
-  showGroupDialog() {
+  showGroupDialog(userData) {
     showDialog(
         context: context,
         builder: (_) {
@@ -210,15 +272,17 @@ class _GroupMainViewState extends State<GroupMainView> {
                 color: const Color.fromARGB(255, 58, 74, 82),
                 padding: EdgeInsets.all(10.sp),
                 height: 400.h,
-                child: BoxList()),
+                child: BoxList(
+                  userData: userData,
+                )),
           );
         });
   }
 }
 
 class BoxList extends StatefulWidget {
-  const BoxList({super.key});
-
+  const BoxList({super.key, required this.userData});
+  final dynamic userData;
   @override
   State<BoxList> createState() => _BoxListState();
 }
@@ -306,18 +370,24 @@ class _BoxListState extends State<BoxList> {
         ),
         ElevatedButton(
             onPressed: () async {
-              if (groupController.text.isNotEmpty) {
+              if (groupController.text.isNotEmpty && groupIds.isNotEmpty) {
+                // var userGroup = widget.userData['groups'];
                 var chatgroupRef =
                     FirebaseDatabase.instance.ref('groupchat').push();
+                userInvolvementGroup.add(chatgroupRef.key);
+
                 await chatgroupRef.set({
                   "group_name": groupController.text.trim(),
                   "group_members": groupIds,
                   "group_id": chatgroupRef.key
                 });
+
                 for (var id in groupIds) {
-                  await ref.child(id).update({
-                    'groups': [chatgroupRef.key]
-                  });
+                  var group = await ref.child(id).child('groups').get();
+                  dynamic userGroup = group.value;
+
+                  var newList = List.from(userGroup)..add(chatgroupRef.key);
+                  await ref.child(id).update({'groups': newList});
                 }
                 Navigator.pop(context);
               } else {

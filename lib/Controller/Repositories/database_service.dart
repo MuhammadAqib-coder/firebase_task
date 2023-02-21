@@ -73,13 +73,15 @@ Future getChatUser(members) async {
 Future getGroupsChat(groups) async {
   dynamic temp = [];
   await FirebaseDatabase.instance.ref('groupchat').get().then((doc) {
-    var snapshot = doc.value as Map<dynamic, dynamic>;
-    snapshot.forEach((key, value) {
-      var groupUser = Map<String, dynamic>.from(value);
-      if (groups.contains(groupUser['group_id'])) {
-        temp.add(groupUser);
-      }
-    });
+    if (doc.exists) {
+      var snapshot = doc.value as Map<dynamic, dynamic>;
+      snapshot.forEach((key, value) {
+        var groupUser = Map<String, dynamic>.from(value);
+        if (groups.contains(groupUser['group_id'])) {
+          temp.add(groupUser);
+        }
+      });
+    }
   });
   return temp;
 }
@@ -137,7 +139,11 @@ getGroupAdmin(groupId) async {
 
 //get group members
 getGroupMembers(groupId) async {
-  return FirebaseDatabase.instance.ref('groupchat').child(groupId).onValue;
+  return await FirebaseDatabase.instance
+      .ref('groupchat')
+      .child(groupId)
+      .child('group_members')
+      .get();
 }
 
 //send message
